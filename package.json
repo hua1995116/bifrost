@@ -18,6 +18,6 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+ssh://git@github.com:cevio/bifroster.git"
+    "url": "git+ssh://git@github.com:cevio/bifrost.git"
   }
 }
