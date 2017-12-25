@@ -1,18 +1,21 @@
 module.exports = component => {
-  component.beforeStart(() => {
-    console.log('component beforeStart');
+  [
+    'task:start',
+    'task:done',
+    'server:start',
+    'server:destroy'
+  ].forEach(name => {
+    component.on(name, (...args) => {
+      console.log('[agent]:', '[channel]:', name, ...args);
+    })
   });
 
-  component.beforeStop(() => {
-    console.log('component beforeStop');
-  })
-
-  component.agentDidReady(() => {
-    console.log('component agentDidReady');
-  })
-
-  component.use(async (ctx, next) => {
-    ctx.send({a:1,b:2, c:ctx.body});
+  component.use(async(ctx, next) => {
+    ctx.send({
+      a: 1,
+      b: 2,
+      c: ctx.body
+    });
     await next();
   })
 }

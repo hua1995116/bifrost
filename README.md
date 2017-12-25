@@ -38,21 +38,23 @@ new Bifrost({ ...options });
 - **port** `number` 服务启动端口
 - **host** `string` 服务启动ip
 
-## Bifrost#Events
+## Master#Events
 
-- **AGENT:READY** Agent服务准备就绪
-- **AGENT:EXIT** Agent服务关闭
-- **BIFROST:READY** 整个应用准备就绪
+- **agent:ready** Agent服务准备就绪
+- **agent:exit** Agent服务关闭
+- **exit** 整个应用关闭
+- **ready** 整个应用准备就绪
 
 ```javascript
-bifrost.on('AGENT:READY', () => {
-  console.log('AGENT:READY');
-});
-bifrost.on('BIFROST:READY', () => {
-  console.log('BIFROST:READY');
-});
-bifrost.on('AGENT:EXIT', () => {
-  console.log('AGENT:EXIT');
+[
+  'agent:ready',
+  'ready',
+  'agent:exit',
+  'exit'
+].forEach(name => {
+  bifrost.on(name, (...args) => {
+    bifrost.console.log(`[${bifrost.type}]:`, name, ...args);
+  });
 });
 ```
 
@@ -76,53 +78,32 @@ const Component = require('./component');
 module.exports = class AgentProcess extends Bifrost.Agent {
   constructor() {
     super();
-    // 安装插件
     this.install('component', Component);
-    // 接收消息
-    this.on('receiveMessage', msg => {
-      this.console.log(msg);
-    })
-  }
-
-  beforeCreate() {
-    this.console.log('agent beforeCreate');
-  }
-
-  created() {
-    this.console.log('agent created');
-  }
-
-  beforeClose() {
-    this.console.log('agent beforeClose');
-  }
-
-  closed() {
-    this.console.log('agent closed');
-  }
-
-  bifrostReady() {
-    this.console.log('agent bifrostReady');
+    [
+      'receive:message',
+      'master:ready',
+      'agent:beforeCreate',
+      'agent:created',
+      'agent:beforeDestroy',
+      'agent:destroyed'
+    ].forEach(name => {
+      this.on(name, (...args) => {
+        this.console.log('[agent]:', name, ...args);
+      })
+    });
   }
 }
 ```
 
 ### Agent lifecycles
 
-- **beforeCreate** Agent被创建前
-- **created** Agent被创建完毕
-- **beforeClose** Agent开始停止服务前
-- **closed** Agent服务被停止后
-- **bifrostReady** 由顶层进程通知过来的关于整个应用准备完毕后调用的生命周期
+- **receive:message** 自定义接收未进入微服务的消息处理事件
+- **agent:beforeCreate** Agent被创建前
+- **agent:created** Agent被创建完毕
+- **agent:beforeDestroy** Agent开始停止服务前
+- **agent:destroyed** Agent服务被停止后
+- **master:ready** 由顶层进程通知过来的关于整个应用准备完毕后调用的生命周期
 
-### Agent receive extra message
-
-自定义接收未进入微服务的消息处理事件
-
-```javascript
-this.on('receiveMessage', msg => {
-  this.console.log(msg);
-})
-```
 
 ### Agent install plugins
 
@@ -138,28 +119,32 @@ this.install(name, plugin);
 
 实际情况下，我们采用路由中间件的模式来处理这些请求，从而返回数据。
 
-首先来认识3个生命周期：
+首先来认识4个生命周期：
 
-- **beforeStart** 注册服务初始化的函数
-- **beforeStop** 注册服务将要停止的函数
-- **agentDidReady** 当整个工厂都准备完毕执行
+- **task:start** 任务开始
+- **task:done** 任务结束
+- **server:start** 注册服务初始化的函数
+- **server:destroy** 注册服务将要停止的函数
 
 ```javascript
 module.exports = component => {
-  component.beforeStart(() => {
-    console.log('component beforeStart');
+  [
+    'task:start',
+    'task:done',
+    'server:start',
+    'server:destroy'
+  ].forEach(name => {
+    component.on(name, (...args) => {
+      console.log('[agent]:', '[channel]:', name, ...args);
+    })
   });
 
-  component.beforeStop(() => {
-    console.log('component beforeStop');
-  })
-
-  component.agentDidReady(() => {
-    console.log('component agentDidReady');
-  })
-
-  component.use(async (ctx, next) => {
-    ctx.send({a:1,b:2, c:ctx.body});
+  component.use(async(ctx, next) => {
+    ctx.send({
+      a: 1,
+      b: 2,
+      c: ctx.body
+    });
     await next();
   })
 }
@@ -175,10 +160,12 @@ module.exports = component => {
 
 生命周期如下：
 
-- **beforeStart** app被创建前
-- **started** app被创建完毕
-- **beforeStop** app开始停止服务前
-- **stoped** app服务被停止后
+- **wroker:beforeStart** app被创建前
+- **wroker:started** app被创建完毕
+- **wroker:beforeStop** app开始停止服务前
+- **wroker:stoped** app服务被停止后
+- **master:ready** 整个服务准备完毕
+- **receive:message** 接收额外的消息
 
 **app.js**
 
@@ -197,18 +184,18 @@ module.exports = app => {
     ctx.body = data
   });
 
-  app.beforeStart(() => {
-    app.console.log(`[${app.pid}]`, 'beforeStart');
-  })
-  app.started(() => {
-    app.console.log(`[${app.pid}]`, 'started');
-  })
-  app.beforeStop(() => {
-    app.console.log(`[${app.pid}]`, 'beforeStop');
-  })
-  app.stoped(() => {
-    app.console.log(`[${app.pid}]`, 'stoped');
-  })
+  [
+    'wroker:beforeStart',
+    'wroker:started',
+    'wroker:beforeStop',
+    'wroker:stoped',
+    'master:ready',
+    'receive:message'
+  ].forEach(name => {
+    app.on(name, (...args) => {
+      app.console.log('[worker]:', name, ...args);
+    })
+  });
 
   return koa.callback();
 }
@@ -222,4 +209,4 @@ You can see how to write through the examples in the test folder, and you can te
 
 ## License
 
-IPC Message is [MIT licensed](https://opensource.org/licenses/MIT).
+Bifrost is [MIT licensed](https://opensource.org/licenses/MIT).

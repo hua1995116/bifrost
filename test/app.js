@@ -12,18 +12,18 @@ module.exports = app => {
     ctx.body = data
   });
 
-  app.beforeStart(() => {
-    app.console.log(`[${app.pid}]`, 'beforeStart');
-  })
-  app.started(() => {
-    app.console.log(`[${app.pid}]`, 'started');
-  })
-  app.beforeStop(() => {
-    app.console.log(`[${app.pid}]`, 'beforeStop');
-  })
-  app.stoped(() => {
-    app.console.log(`[${app.pid}]`, 'stoped');
-  })
+  [
+    'wroker:beforeStart',
+    'wroker:started',
+    'wroker:beforeStop',
+    'wroker:stoped',
+    'master:ready',
+    'receive:message'
+  ].forEach(name => {
+    app.on(name, (...args) => {
+      app.console.log('[worker]:', name, ...args);
+    })
+  });
 
   return koa.callback();
 }

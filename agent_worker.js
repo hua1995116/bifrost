@@ -1,10 +1,11 @@
 const {
-  getAgentRuntimeArgs,
-  nameSpace
+  getAgentRuntimeArgs
 } = require('./lib/util');
 
 const AgentProcessArgv = getAgentRuntimeArgs(process.argv);
 const loader = require(AgentProcessArgv.loader);
 const agent = new loader();
 
-agent[nameSpace.agent.onAgentInit]().then(() => agent[nameSpace.agent.onAgentReady]());
+agent
+  .createServer()
+  .then(() => agent.send('master', 'AGENT:READY'));

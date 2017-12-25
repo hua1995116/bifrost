@@ -1,6 +1,6 @@
 {
   "name": "bifroster",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "nodejs base dev framework",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "flatten": "^1.0.2",
-    "ipc-message": "^1.0.4",
+    "ipc-message": "^1.0.6",
     "miox-compose": "^5.1.16",
     "path-to-regexp": "^2.1.0"
   },
