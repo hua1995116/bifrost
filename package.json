@@ -7,6 +7,7 @@
     "test": "node test/index.js"
   },
   "dependencies": {
+    "async-events-listener": "^1.0.0",
     "flatten": "^1.0.2",
     "ipc-message": "^1.0.6",
     "miox-compose": "^5.1.16",
