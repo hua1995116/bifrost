@@ -75,23 +75,20 @@ const Bifrost = require('bifroster');
 // agent自定义插件
 const Component = require('./component');
 
-module.exports = class AgentProcess extends Bifrost.Agent {
-  constructor() {
-    super();
-    this.install('component', Component);
-    [
-      'receive:message',
-      'master:ready',
-      'agent:beforeCreate',
-      'agent:created',
-      'agent:beforeDestroy',
-      'agent:destroyed'
-    ].forEach(name => {
-      this.on(name, (...args) => {
-        this.console.log('[agent]:', name, ...args);
-      })
-    });
-  }
+module.exports = agent => {
+  agent.install('component', Component);
+  [
+    'receive:message',
+    'master:ready',
+    'agent:beforeCreate',
+    'agent:created',
+    'agent:beforeDestroy',
+    'agent:destroyed'
+  ].forEach(name => {
+    agent.on(name, (...args) => {
+      agent.console.log('[agent]:', name, ...args);
+    })
+  });
 }
 ```
 

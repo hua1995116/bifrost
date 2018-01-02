@@ -4,7 +4,8 @@
   "description": "nodejs base dev framework",
   "main": "index.js",
   "scripts": {
-    "test": "node test/index.js"
+    "test": "node test/index.js",
+    "a": "node test/a.js"
   },
   "dependencies": {
     "async-events-listener": "^1.0.0",
