@@ -5,7 +5,8 @@ const bifrost = new Bifrost({
   app_worker: path.resolve(__dirname, 'app.js'),
   agents: {
     agent: path.resolve(__dirname, 'agent.js')
-  }
+  },
+  plugin: path.resolve(__dirname, 'plugin.js')
 });
 
 [

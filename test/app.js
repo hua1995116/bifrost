@@ -6,10 +6,11 @@ module.exports = app => {
     if (ctx.req.url === '/favicon.ico') {
       return;
     }
-    const data = await ctx.base.fetch('agent://component/a/b', {
+    const type = ctx.query.type || 'test';
+    const data = await ctx.base.fetch(`agent://${type}/a/b`, {
       a:4
     });
-    ctx.body = data
+    ctx.body = data;
   });
 
   [

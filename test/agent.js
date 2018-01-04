@@ -1,7 +1,4 @@
-const Agent = require('../lib/agent');
-const Component = require('./component');
 module.exports = agent => {
-  agent.install('component', Component);
   [
     'receive:message',
     'master:ready',
