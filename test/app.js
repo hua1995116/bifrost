@@ -1,11 +1,5 @@
-const Koa = require('koa');
 module.exports = app => {
-  const koa = new Koa();
-  koa.context.base = app;
-  koa.use(async ctx => {
-    if (ctx.req.url === '/favicon.ico') {
-      return;
-    }
+  app.Router.get('/test', async ctx => {
     const type = ctx.query.type || 'test';
     const data = await ctx.base.fetch(`agent://${type}/a/b`, {
       a:4
@@ -25,6 +19,4 @@ module.exports = app => {
       app.console.log('[worker]:', name, ...args);
     })
   });
-
-  return koa.callback();
 }
