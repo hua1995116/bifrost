@@ -11,7 +11,7 @@ module.exports = component => {
   });
 
   component.use(async(ctx, next) => {
-    ctx.send({
+    ctx.reply({
       a: 1,
       b: 3,
       c: ctx.body
