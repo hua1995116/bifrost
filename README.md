@@ -15,11 +15,28 @@ const path = require('path');
 const Bifrost = require('bifroster');
 const bifrost = new Bifrost({
   cwd: __dirname,
-  app_worker: path.resolve(__dirname, 'app.js'),
-  agents: {
-    agent: path.resolve(__dirname, 'agent.js')
-  }
+  agents: ['agent']
 });
+```
+
+## Dir
+
+```bash
+Bifrost-project
+├── package.json
+├── index.js
+├── app.js (可选)
+├── agent.js (可选)
+├── plugin.js (可选)
+├── app
+|   ├── router
+│   |   └── index.js
+│   ├── controller
+│   |   └── home.js
+│   ├── service (可选)
+│   |   └── user.js
+│   ├── middleware (可选)
+│   |   └── response_time.js
 ```
 
 ## Bifrost
@@ -32,8 +49,7 @@ new Bifrost({ ...options });
 
 - **max** `number` 最大启动子进程个数
 - **cwd** `string` 项目目录
-- **agents** `object` agent进程列表，格式为 `{"agentName": "/where/to/path.js", ...}`
-- **app_worker** `string` 子进程启动文件路径
+- **agents** `array` agent进程列表，格式为 `agents:['agent']`
 - **secure** `object` 启动安全协议的配置 `{key, cert}`组合，使用`https`协议
 - **port** `number` 服务启动端口
 - **host** `string` 服务启动ip
@@ -68,15 +84,12 @@ new Bifrost({ ...options });
 
 ### Create Agent
 
-agent.js =>
+/agent.js =>
 
 ```javascript
 const Bifrost = require('bifroster');
-// agent自定义插件
-const Component = require('./component');
 
 module.exports = agent => {
-  agent.install('component', Component);
   [
     'receive:message',
     'master:ready',
@@ -104,11 +117,43 @@ module.exports = agent => {
 
 ### Agent install plugins
 
-安装微服务插件。
+在项目根目录下有一个文件`plugin.js`。
 
 ```javascript
-this.install(name, plugin);
+const path = require('path');
+module.exports = {
+  test: {
+    enable: true,
+    env: '*',
+    path: path.resolve(__dirname, 'plugins', 'test'),
+    // package: 'component',
+    agent: '*',
+    config: {}
+  },
+  test2: {
+    enable: true,
+    env: '*',
+    path: path.resolve(__dirname, 'plugins', 'test2'),
+    // package: 'component',
+    agent: '*',
+    config: {}
+  }
+}
 ```
+
+参数：
+
+- **enable** `boolean` 是否可用 默认`true`
+- **env** `array` 运行环境 默认全环境
+- **path** `string` 插件文件夹 与`package`互斥
+- **package** `string` 插件模块 与`path`互斥
+- **agent** `array` 运行在哪个agent上 默认全agent
+- **config** 插件配置
+
+每个插件分2个入口:
+
+- **agent.js** 运行在agent端入口
+- **app.js** 运行在app端入口
 
 ### Make Plugin
 
@@ -150,10 +195,11 @@ module.exports = component => {
 我们可以看到，里面的数据都是通过中间件模式被返回的，这个在使用nodejs的开发者是最清楚如何使用，这里我就不再多说。
 
 > 注意：这里的`ctx.send`只有一个参数，意思说明，现在的数据需要按原路返回给请求者。
+> 同样的，`ctx.reply`就是`ctx.send`只有一个参数时候的作用
 
-## Start file
+## Create application
 
-当我们指定`agent`和`app`的执行文件后，系统将会自动调用这些文件。`agent`文件结构我就不多说类，我来说下`app`文件的启动结构。
+/app.js
 
 生命周期如下：
 
@@ -167,20 +213,7 @@ module.exports = component => {
 **app.js**
 
 ```javascript
-const Koa = require('koa');
 module.exports = app => {
-  const koa = new Koa();
-  koa.context.base = app;
-  koa.use(async ctx => {
-    if (ctx.req.url === '/favicon.ico') {
-      return;
-    }
-    const data = await ctx.base.fetch('agent://component/a/b', {
-      a:4
-    });
-    ctx.body = data
-  });
-
   [
     'wroker:beforeStart',
     'wroker:started',
@@ -193,12 +226,8 @@ module.exports = app => {
       app.console.log('[worker]:', name, ...args);
     })
   });
-
-  return koa.callback();
 }
 ```
-
-> 注意：我们需要返回一个`callback`才能启动服务。
 
 ## Test
 
