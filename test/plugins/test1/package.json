@@ -9,8 +9,6 @@
   },
   "dependencies": {
     "async-events-listener": "^1.0.0",
-    "cfork": "^1.7.1",
-    "debug": "^3.1.0",
     "detect-port": "^1.2.2",
     "ipc-message": "^1.0.7",
     "utility": "^1.13.1"
@@ -23,5 +21,8 @@
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com:cevio/bifrost.git"
+  },
+  "nodebasePlugin": {
+    "name": "test1"
   }
 }
