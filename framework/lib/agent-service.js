@@ -1,6 +1,6 @@
-const Emitter = require('async-events-listener');
+const Middleware = require('./middleware');
 
-module.exports = class AgentService extends Emitter {
+module.exports = class AgentService extends Middleware {
   constructor() {
     super();
   }

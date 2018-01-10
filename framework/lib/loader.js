@@ -33,7 +33,7 @@ module.exports = class NodebaseLoader {
         this.singleLoad(fullpath, target[name]);
       } else {
         if (!this.ignore(file) && /.js$/.test(file)) {
-          const exports = loadFile(_path);
+          const exports = loadFile(fullpath);
           const name = camelize(file);
           const res = callback(target, name, exports, file, fullpath);
           if (res) {

@@ -29,14 +29,10 @@ module.exports = class Nodebase extends IPCMessage {
   }
 
   async onReceiveMessageHandler(msg, socket) {
-    if (socket) {
-      return await this.emit(msg, socket);
-    }
-    const action = msg.action;
-    if (path.isAbsolute(action)) {
-
+    if (this.type === 'agent') {
+      await this.onAgentReceiveMessage(msg, socket);
     } else {
-      await this.emit(action, msg);
+      await this.onApplicationReceiveMessage(msg, socket);
     }
   }
 

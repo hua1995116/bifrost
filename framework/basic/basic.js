@@ -25,6 +25,10 @@ class BaseContextClass {
     this.base = ctx;
     this.type = 'basic';
   }
+
+  async fetch(...args) {
+    return await this.base.fetch(...args);
+  }
 }
 
 module.exports = BaseContextClass;

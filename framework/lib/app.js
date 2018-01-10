@@ -18,6 +18,8 @@ module.exports = class Application extends NodebaseApplication {
     super(options);
     this.app = new koa();
     this.reploads = [];
+    this.callbackId = 0;
+    this.callbacks = {};
     this.on('app:exit:child:notify', this.close.bind(this));
     this.on('app:exit:child:destroy', () => {
       if (this.status === 1) {
@@ -83,7 +85,7 @@ module.exports = class Application extends NodebaseApplication {
   }
 
   loadControllerModules() {
-    if (!this.options.controller) this.options.controller = 'app/middleware';
+    if (!this.options.controller) this.options.controller = 'app/controller';
     this.options.controller = this.resolve(this.options.controller);
     const loader = new FileLoader({
       dir: this.options.controller,
@@ -141,5 +143,54 @@ module.exports = class Application extends NodebaseApplication {
         resolve();
       });
     })
+  }
+
+  async fetch(url, body, socket, options = {}) {
+    const exec = /([^:]+):\/\/([^\/]+)\/?(.+)?/.exec(url);
+    assert(exec, 'It is not a standard resource path.');
+    const agent = exec[1];
+    const service = exec[2];
+    const uri = exec[3] ? '/' + exec[3] : '/';
+    return new Promise((resolve, reject) => {
+      const time = new Date().getTime();
+      const id = this.callbackId++;
+      const timer = setInterval(() => {
+        if (new Date().getTime() - time > (options.timerout || 10000)) {
+          delete this.callbacks[id];
+          clearInterval(timer);
+          reject(new Error('Timeout'));
+        }
+      }, 10);
+      this.callbacks[id] = (err, data) => {
+        delete this.callbacks[id];
+        clearInterval(timer);
+        if (err) return reject(err);
+        resolve(data);
+      }
+      debug('send message %j to `%s` by `%s`', {
+        service: service,
+        data: body,
+        cid: id
+      }, agent, uri);
+      this.send(agent, uri, {
+        service: service,
+        data: body,
+        cid: id
+      }, socket);
+    })
+  }
+
+  async onApplicationReceiveMessage(msg, socket) {
+    debug('worker receive message:', msg, socket);
+    const action = msg.action;
+    if (typeof action === 'number') {
+      const cb = this.callbacks[msg.action];
+      if (msg.body.error) {
+        return cb(new Error(msg.body.error))
+      }
+      cb(null, msg.body);
+    } else {
+      await this.emit(action, msg, socket);
+    }
   }
 }

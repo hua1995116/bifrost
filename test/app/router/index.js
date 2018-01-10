@@ -1,5 +1,4 @@
 module.exports = (app, router) => {
-  router.get('/', ctx => {
-    ctx.body = 'hello nodebase';
-  })
+  router.get('/', app.controller.home.hello);
+  router.get('/test', app.controller.test.hello);
 }

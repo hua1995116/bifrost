@@ -62,16 +62,9 @@ module.exports = class Master extends IPCMessage {
     this.onExitEventBinding();
   }
 
-  async onReceiveMessageHandler(message, socket) {
-    if (socket) {
-      return await this.emit(message, socket);
-    }
+  async onReceiveMessageHandler(message) {
     const action = message.action;
-    if (path.isAbsolute(action)) {
-
-    } else {
-      await this.emit(action, message);
-    }
+    await this.emit(action, message);
   }
 
   // 绑定系统使用的生命周期函数

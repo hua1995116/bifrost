@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const Emitter = require('async-events-listener');
 const resolvePluginOrder = require('../../utils/plugin');
-const { loadFile } = require('../../utils')
+const { loadFile } = require('../../utils');
+const AgentContext = require('./agent-context');
 
 module.exports = class NodebasePluginFramework extends Emitter {
   constructor(parent, component) {
@@ -10,6 +11,7 @@ module.exports = class NodebasePluginFramework extends Emitter {
     this.parent = parent;
     this.component = component;
     this.stacks = [];
+    this.channels = {};
   }
 
   resolvePlugins(file) {
@@ -30,7 +32,8 @@ module.exports = class NodebasePluginFramework extends Emitter {
       if (this.component) {
         const target = new this.component();
         await stack.exports(target);
-        this.stacks[i] = target;
+        target.poly();
+        this.stacks[i] = this.channels[stack.name] = target;
       } else {
         await stack.exports(this.parent);
       }
@@ -45,5 +48,11 @@ module.exports = class NodebasePluginFramework extends Emitter {
     } else {
       await this.parent.emit('app:plugin:destroy');
     }
+  }
+
+  async onMacroService(service, msg) {
+    if (!this.channels[service]) return;
+    const target = this.channels[service];
+    await target.execute(new AgentContext(this.parent, msg));
   }
 }
