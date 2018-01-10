@@ -6,6 +6,7 @@ const fs = require('fs');
 const utility = require('utility');
 
 const initCwd = process.cwd();
+const defaultFramework = path.resolve(__dirname, '../framework');
 
 module.exports = { getFrameworkPath };
 
@@ -46,7 +47,7 @@ function getFrameworkPath({ framework, baseDir }) {
   }
 
   // 2.2 use egg by default
-  return assertAndReturn('nodebase', moduleDir);
+  return defaultFramework;
 }
 
 function assertAndReturn(frameworkName, moduleDir) {

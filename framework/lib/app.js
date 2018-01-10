@@ -11,6 +11,7 @@ const ServiceClassBasic = require('../basic/service');
 const ControllerClassBasic = require('../basic/controller');
 const MiddlewareClassBasic = require('../basic/middleware');
 const classBasic = require('../basic/basic');
+const Router = require('./router');
 
 module.exports = class Application extends NodebaseApplication {
   constructor(options) {
@@ -109,9 +110,11 @@ module.exports = class Application extends NodebaseApplication {
     for (let i = 0; i < this.reploads.length; i++) {
       await this.reploads[i].call(this, FileLoader, classBasic);
     }
-    this.app.use(async ctx => {
-      ctx.body = 'hello world';
-    });
+    if (!this.router) {
+      await Router(this, FileLoader, classBasic);
+    }
+    assert(this.router, 'Application.router is undefined, please make sure router is loaded');
+    this.app.use(...this.router.convert());
     await this.createServer(this.app.callback());
   }
 
