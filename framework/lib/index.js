@@ -15,6 +15,10 @@ module.exports = class Nodebase extends IPCMessage {
     });
   }
 
+  resolve(...args) {
+    return path.resolve(this.baseDir, ...args);
+  }
+
   checkLifeExit() {
     const timer = setInterval(() => {
       if (this.status === 2) {
@@ -59,8 +63,11 @@ module.exports = class Nodebase extends IPCMessage {
     await this.emit('beforeCreate');
     await this.initPlugin(type, component);
     await this.emit('created');
-    await this.emit('beforeMount');
     await this.loadFileWorker();
+    await this.emit('beforeMount');
+    if (this.startWithService) {
+      await this.startWithService();
+    }
     await this.emit('mounted');
   }
 
