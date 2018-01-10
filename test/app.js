@@ -1,3 +1,3 @@
 module.exports = app => {
-  console.log('app invoke');
+  // console.log('app invoke');
 }

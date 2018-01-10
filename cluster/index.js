@@ -6,6 +6,8 @@ const IPCMessage = require('ipc-message');
 const childprocess = require('child_process');
 const debug = require('debug')('nodebase:cluster:master');
 const parseOptions = require('../utils/options');
+const { costTime } = require('../utils');
+
 const toString = Object.prototype.toString;
 const agentWorkerFile = path.resolve(__dirname, './agent_worker.js');
 const appWorkerFile = path.resolve(__dirname, './app_worker.js');
@@ -28,14 +30,20 @@ const agentLifeCycle = [
 module.exports = class Master extends IPCMessage {
   constructor(options) {
     super();
-    this.agentWorkerIndex = 0;
+    /**
+     * Master进程状态
+     * this.status
+     * 
+     * 0: 正常运行中
+     * 1: 正在关闭workers进程
+     * 2: 正在关闭Agents进程
+     * 3: 正在关闭Master进程
+     */
     this.status = 0;
     this.options = parseOptions(options);
     this.on('message', this.onReceiveMessageHandler.bind(this));
-
-    let startTime = Date.now();
     
-    detectPort((err, port) => {
+    detectPort(this.options.port, (err, port) => {
       if (err) {
         err.name = 'ClusterPortConflictError';
         err.message = '[master] try get free port error, ' + err.message;
@@ -43,30 +51,15 @@ module.exports = class Master extends IPCMessage {
         debug('detectPort catch error', err);
         process.exit(1);
       }
-      debug('detectPort success cost time:', (Date.now() - startTime) + 'ms');
       this.options.clusterPort = port;
       this.forkAgentWorker();
     });
 
-    agentLifeCycle.forEach(life => this.on(life, costTime(`[${life}]:`)));
-    this.on('agent:mounted', this.forkApplicationWorker.bind(this, this.options.max));
-    this.on('agent:exit:child:done', this.agentWorkerExitDone.bind(this));
-    this.on('app:exit:child:done', this.appWorkerExitDone.bind(this));
-    this.on('agent:exit', () => this.status = 3);
+    // 监听各个生命周期花费时间
+    agentLifeCycle.forEach(life => this.on(life, costTime(life)));
 
-    process.on('SIGINT', this.onSignal.bind(this, 'SIGINT'));
-    process.on('SIGQUIT', this.onSignal.bind(this, 'SIGQUIT'));
-    process.on('SIGTERM', this.onSignal.bind(this, 'SIGTERM'));
-    process.on('exit', this.onExit.bind(this));
-
-    function costTime(name) {
-      return msg => {
-        msg.body = parseInt(msg.body, 10);
-        const delay = msg.body - startTime;
-        startTime = msg.body;
-        debug(name, delay + 'ms');
-      }
-    }
+    this.onLifeCycleBinding();
+    this.onExitEventBinding();
   }
 
   async onReceiveMessageHandler(message, socket) {
@@ -81,38 +74,52 @@ module.exports = class Master extends IPCMessage {
     }
   }
 
+  // 绑定系统使用的生命周期函数
+  onLifeCycleBinding() {
+    this.on('agent:mounted', this.onAgentsMounted.bind(this));
+    this.on('agent:exit:child:done', this.agentWorkerExitDone.bind(this));
+    this.on('app:exit:child:done', this.appWorkerExitDone.bind(this));
+    this.on('agent:exit', () => this.status = 3);
+  }
+
+  // 绑定系统退出的事件处理机制
+  onExitEventBinding() {
+    process.on('SIGINT', this.onSignal.bind(this, 'SIGINT'));
+    process.on('SIGQUIT', this.onSignal.bind(this, 'SIGQUIT'));
+    process.on('SIGTERM', this.onSignal.bind(this, 'SIGTERM'));
+    process.on('exit', this.onExit.bind(this));
+  }
+
+  /**
+   * 轮询确定是否所有Agents都已经mounted完毕
+   * 条件为在IPCMessage上注册的agent个数是否与我们指定的agent个数相同
+   * 发生：在任意一个agent的mounted周期上轮询
+   */
+  onAgentsMounted() {
+    const realAgentsCount = Object.keys(this.agents).length;
+    const customAgentsCount = this.options.agents.length;
+    if (realAgentsCount === customAgentsCount) {
+      debug('All agents is mounted, now start to fork workers.');
+      this.forkApplicationWorker(this.options.max);
+    }
+  }
+
   forkAgentWorker() {
-    this.agentStartTime = Date.now();
-    const debugPort = 5800;
     const argvs = process.argv.slice(2);
     const opt = {
       cwd: this.options.cwd,
       stdout: process.stdout,
       stderr: process.stderr,
-      env: process.env
-    };
-    if (this.options.isDebug) {
-      opt.execArgv = process.execArgv.concat([`--debug-port=${debugPort}`]);
+      env: process.env,
+      execArgv: process.execArgv
     }
     for (let i = 0; i < this.options.agents.length; i++) {
       const args = argvs.concat([JSON.stringify(this.options)]);
       args.push(this.options.agents[i].name, this.options.agents[i].path);
-      const agentWorker = childprocess.fork(agentWorkerFile, args, opt);
-      agentWorker.id = ++this.agentWorkerIndex;
-      // agentWorker.on('error', err => {
-      //   err.name = 'AgentWorkerError';
-      //   err.id = agentWorker.id;
-      //   err.pid = agentWorker.pid;
-      //   // TODO: this.logger.error(err);
-      //   debug('agent fork catch error:', err);
-      // });
-      // agentWorker.on('exit', (code, signal) => {
-      //   debug('master:agent close')
-      //   // this.send('master', 'agent-exit', {
-      //   //   code, signal, pid: agentWorker.pid
-      //   // });
-      // });
-      this.registAgent(this.options.agents[i].name, agentWorker);
+      this.registAgent(
+        this.options.agents[i].name, 
+        childprocess.fork(agentWorkerFile, args, opt)
+      );
     }
   }
 
@@ -125,7 +132,6 @@ module.exports = class Master extends IPCMessage {
       args,
       silent: false,
       count: max,
-      // don't refork in local env
       refork: false,
       env: process.env
     });
@@ -158,18 +164,13 @@ module.exports = class Master extends IPCMessage {
         }
         this.status = 2;
         this.send('agents', 'agent:exit:child:notify');
+        this.emit('app:exit');
       }
       
       if (this.status === 3) {
-        // const err = this.status;
-        // if (err instanceof Error || toString.call(err) === '[object Error]') {
-        //   debug('master exit process catch error', err);
-        //   clearInterval(timer);
-        //   process.exit(1);
-        // }
         if (this._agents.filter(a => !!a.connected).length) return;
         clearInterval(timer);
-        debug('master ext process success');
+        debug(`[${this.pid}]`, 'master is closing process with signal:', signal);
         process.exit(0);
       }
     }, 100);
@@ -181,9 +182,6 @@ module.exports = class Master extends IPCMessage {
   }
 
   onExit(code) {
-    // istanbul can't cover here
-    // https://github.com/gotwarlost/istanbul/issues/567
-    //const level = code === 0 ? 'info' : 'error';
-    //this.logger[level]('[master] exit with code:%s', code);
+    debug(`[${this.pid}]`, 'master is exited with code:', code);
   }
 }

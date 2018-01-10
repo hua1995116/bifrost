@@ -10,7 +10,9 @@ module.exports = class Nodebase extends IPCMessage {
     this.options = options;
     this.baseDir = options.baseDir;
     this.status = 0;
-    this.on('message', async (msg, socket) => await this.onReceiveMessageHandler(msg, socket));
+    this.on('message', async (msg, socket) => {
+      await this.onReceiveMessageHandler(msg, socket);
+    });
   }
 
   checkLifeExit() {
@@ -35,7 +37,7 @@ module.exports = class Nodebase extends IPCMessage {
   }
 
   async initPlugin(type, component) {
-    if (!this.options.plugins) this.options.plugins = 'config/plugin.js';
+    if (!this.options.plugins) this.options.plugins = 'plugin.js';
     this.plugin = new PluginFramework(this, component);
     await this.plugin.installPlugins(type);
   }

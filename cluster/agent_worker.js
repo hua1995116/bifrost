@@ -9,7 +9,6 @@ options.loader = loader;
 const Agent = require(options.framework).Agent;
 const agent = new Agent(options);
 
-// Agent lifecycle binding.
 [
   'beforeCreate',
   'created',
@@ -19,15 +18,16 @@ const agent = new Agent(options);
   'destroyed'
 ].forEach(life => {
   agent.on(life, () => 
-    agent.send('master', `agent:${life}`, Date.now())
+    agent.send('master', `agent:${life}`, {
+      time: Date.now(),
+      pid: agent.pid
+    })
   );
 });
 
 process.on('SIGTERM', () => agent.checkLifeExit())
 process.on('SIGINT', () => agent.checkLifeExit());
 process.on('SIGQUIT', () => agent.checkLifeExit());
-process.on('exit', code => {
-  debug('agent is exited', code);
-});
+process.on('exit', code => debug(`[${agent.pid}]`, 'Agent worker is exited with code', code));
 
 agent.init();
