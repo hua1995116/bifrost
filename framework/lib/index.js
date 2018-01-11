@@ -56,10 +56,10 @@ module.exports = class Nodebase extends IPCMessage {
   }
 
   async open(type, component) {
+    await this.loadFileWorker();
     await this.emit('beforeCreate');
     await this.initPlugin(type, component);
     await this.emit('created');
-    await this.loadFileWorker();
     await this.emit('beforeMount');
     if (this.startWithService) {
       await this.startWithService();

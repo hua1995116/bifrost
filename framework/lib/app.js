@@ -181,12 +181,12 @@ module.exports = class Application extends NodebaseApplication {
   }
 
   async onApplicationReceiveMessage(msg, socket) {
-    debug('worker receive message:', msg, socket);
     const action = msg.action;
     if (typeof action === 'number') {
+      debug('Receive message:', msg.body);
       const cb = this.callbacks[msg.action];
       if (msg.body.error) {
-        return cb(new Error(msg.body.error))
+        return cb(new Error(msg.body.error));
       }
       cb(null, msg.body);
     } else {

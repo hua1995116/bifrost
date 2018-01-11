@@ -6,7 +6,6 @@ module.exports = class Agent extends NodebaseApplication {
   constructor(options) {
     super(options, true);
     this.name = options.name;
-    this.context = {};
     this.debug = require('debug')(`nodebase:agent:${options.name}`);
     this.__agentkeepAliveTimer__ = setInterval(() => {}, 24 * 60 * 60 * 1000);
     this.on('agent:exit:child:notify', this.close.bind(this));
@@ -28,12 +27,11 @@ module.exports = class Agent extends NodebaseApplication {
   }
 
   async onAgentReceiveMessage(msg, socket) {
-    this.debug('agent receive message:', msg, socket);
     const action = msg.action;
     if (path.isAbsolute(action) && msg.body.service) {
       const name = msg.body.service;
       delete msg.body.service;
-      await this.plugin.onMacroService(name, msg, this.context);
+      await this.plugin.onMacroService(name, msg);
     } else {
       await this.emit(action, msg, socket);
     }

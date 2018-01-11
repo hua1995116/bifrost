@@ -3,7 +3,6 @@ const path = require('path');
 const Emitter = require('async-events-listener');
 const resolvePluginOrder = require('../../utils/plugin');
 const { loadFile } = require('../../utils');
-const AgentContext = require('./agent-context');
 
 module.exports = class NodebasePluginFramework extends Emitter {
   constructor(parent, component) {
@@ -30,7 +29,7 @@ module.exports = class NodebasePluginFramework extends Emitter {
     for (let i = 0; i < this.stacks.length; i++) {
       const stack = this.stacks[i];
       if (this.component) {
-        const target = new this.component();
+        const target = new this.component(this);
         await stack.exports(target);
         target.poly();
         this.stacks[i] = this.channels[stack.name] = target;
@@ -43,16 +42,17 @@ module.exports = class NodebasePluginFramework extends Emitter {
   async uninstallPlugins() {
     if (this.component) {
       for (let i = 0; i < this.stacks.length; i++) {
-        await this.stacks[i].emit('close');
+        await this.stacks[i].emit('destroy');
       }
     } else {
-      await this.parent.emit('app:plugin:destroy');
+      await this.parent.emit('destroy');
     }
   }
 
   async onMacroService(service, msg) {
     if (!this.channels[service]) return;
+    this.parent.debug('Receive service message:', service, msg.body);
     const target = this.channels[service];
-    await target.execute(new AgentContext(this.parent, msg));
+    await target.cross(msg);
   }
 }

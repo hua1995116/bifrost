@@ -1,5 +1,14 @@
+const debug = require('debug')('Test:plugin:test1:agent.js');
 module.exports = component => {
-  component.a = 1;
+  [
+    'destroy',
+    'task:start',
+    'task:end'
+  ].forEach(life => {
+    component.on(life, () => {
+      debug(`lifecycle \`${life}\` is triggered.`);
+    });
+  });
 
   component.use(async (ctx, next) => {
     if (ctx.url === '/a/b/c') {
@@ -8,5 +17,5 @@ module.exports = component => {
         n: 'world'
       });
     }
-  })
+  });
 }
